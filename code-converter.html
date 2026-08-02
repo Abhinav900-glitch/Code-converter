@@ -1,0 +1,1075 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Polyglot — Code Converter</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet">
+<style>
+  :root{
+    --bg:#14161a; --surface:#1b1e24; --surface-2:#21242b; --border:#2c3038;
+    --text:#e7e5e0; --text-dim:#8b8f99; --teal:#2dd4bf; --red:#f0a3a3; --amber:#e8c07d;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:radial-gradient(1200px 600px at 20% -10%, rgba(45,212,191,0.06), transparent), var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100vh;}
+  .wrap{max-width:1280px;margin:0 auto;padding:36px 24px 60px;}
+  header{margin-bottom:22px;}
+  .eyebrow{font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--teal);margin:0 0 10px;display:flex;align-items:center;gap:8px;}
+  .eyebrow::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--teal);box-shadow:0 0 8px var(--teal);}
+  h1{font-family:'JetBrains Mono',monospace;font-size:clamp(26px,4vw,40px);margin:0 0 8px;font-weight:700;letter-spacing:-0.01em;}
+  h1 .from{color:#4b8bbe;} h1 .arrow{color:var(--text-dim);margin:0 6px;} h1 .to{color:var(--teal);}
+  .sub{color:var(--text-dim);font-size:14.5px;margin:0;max-width:680px;}
+
+  .key-row{margin-top:18px;display:flex;gap:10px;align-items:center;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 14px;flex-wrap:wrap;}
+  .key-row label{font-size:12px;color:var(--text-dim);font-family:'JetBrains Mono',monospace;white-space:nowrap;}
+  .key-row input[type=password]{flex:1;background:transparent;border:none;outline:none;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:13px;min-width:120px;}
+  .key-row a{color:var(--teal);font-size:12px;text-decoration:none;white-space:nowrap;}
+  .key-status{font-size:11px;padding:3px 8px;border-radius:20px;font-family:'JetBrains Mono',monospace;white-space:nowrap;}
+  .key-status.ok{background:rgba(45,212,191,0.12);color:var(--teal);}
+  .key-status.empty{background:rgba(139,143,153,0.12);color:var(--text-dim);}
+
+  .toolbar{margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
+  .toolbar select, .toolbar .chip{
+    font-family:'JetBrains Mono',monospace;font-size:12px;background:var(--surface);
+    border:1px solid var(--border);color:var(--text-dim);border-radius:8px;padding:7px 10px;cursor:pointer;
+  }
+  .toolbar label.chip{display:flex;align-items:center;gap:6px;user-select:none;}
+  .toolbar .chip input{accent-color:var(--teal);}
+  .toolbar .chip.active{color:var(--teal);border-color:rgba(45,212,191,0.4);}
+  #tokenEstimate{margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-dim);}
+
+  .filebar{margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+  .file-pill{font-family:'JetBrains Mono',monospace;font-size:11px;background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:5px 10px 5px 12px;display:flex;align-items:center;gap:6px;color:var(--text-dim);cursor:pointer;}
+  .file-pill.active{color:var(--teal);border-color:rgba(45,212,191,0.4);}
+  .file-pill .x{cursor:pointer;color:var(--text-dim);}
+  .file-pill .x:hover{color:var(--red);}
+  .upload-btn, .action-btn{font-family:'JetBrains Mono',monospace;font-size:11px;background:none;border:1px dashed var(--border);color:var(--text-dim);border-radius:20px;padding:5px 12px;cursor:pointer;}
+  .upload-btn:hover, .action-btn:hover{color:var(--teal);border-color:var(--teal);}
+
+  .panes{margin-top:18px;display:grid;grid-template-columns:1fr 64px 1fr;gap:0;align-items:stretch;}
+  @media (max-width:880px){ .panes{grid-template-columns:1fr;gap:16px;} .center-control{flex-direction:row;justify-content:center;padding:8px 0;} }
+
+  .pane{background:var(--surface);border:1px solid var(--border);border-radius:14px;display:flex;flex-direction:column;overflow:hidden;min-height:420px;}
+  .pane-head{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--surface-2);}
+  .lang-select{appearance:none;border:none;outline:none;cursor:pointer;font-family:'JetBrains Mono',monospace;font-weight:600;font-size:13px;padding:6px 28px 6px 12px;border-radius:8px;color:#0d0f12;background-color:var(--lang-color,var(--teal));background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%230d0f12'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;}
+  .pane-tag{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-dim);}
+  textarea{flex:1;resize:none;border:none;outline:none;background:transparent;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:13.5px;line-height:1.6;padding:16px;tab-size:4;}
+  textarea::placeholder{color:#4a4e58;}
+
+  .editor-wrap{flex:1;position:relative;overflow:hidden;display:flex;}
+  .gutter{width:42px;flex-shrink:0;background:var(--surface-2);border-right:1px solid var(--border);overflow:hidden;padding:16px 0;text-align:right;}
+  .gutter div{font-family:'JetBrains Mono',monospace;font-size:12.5px;line-height:1.6;color:#4a4e58;padding-right:10px;}
+  .editor-inner{position:relative;flex:1;overflow:hidden;}
+  .editor-inner pre.highlight-layer{position:absolute;inset:0;margin:0;padding:16px;pointer-events:none;overflow:auto;background:transparent;}
+  .editor-inner pre.highlight-layer code{font-family:'JetBrains Mono',monospace !important;font-size:13.5px !important;line-height:1.6 !important;white-space:pre-wrap !important;word-break:break-word;}
+  .editor-inner textarea{position:absolute;inset:0;color:transparent;background:transparent;caret-color:var(--teal);z-index:1;white-space:pre-wrap;word-break:break-word;}
+  .editor-inner textarea::selection{background:rgba(45,212,191,0.25);}
+  .output-view{flex:1;overflow:auto;position:relative;}
+  .output-view pre{margin:0;height:100%;}
+  .output-view pre code{font-family:'JetBrains Mono',monospace !important;font-size:13.5px !important;line-height:1.6 !important;}
+  .output-raw{position:absolute;inset:0;padding:16px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:13.5px;line-height:1.6;white-space:pre-wrap;display:none;}
+
+  .center-control{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:0 8px;}
+  .convert-btn{width:52px;height:52px;border-radius:50%;border:1px solid var(--border);background:var(--surface-2);color:var(--teal);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s ease,box-shadow .15s ease;font-size:20px;}
+  .convert-btn:hover{box-shadow:0 0 0 6px rgba(45,212,191,0.08);transform:translateY(-1px);}
+  .convert-btn.loading{animation:spin 0.9s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .swap-btn, .verify-btn{font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--text-dim);background:none;border:1px solid var(--border);border-radius:20px;padding:4px 9px;cursor:pointer;}
+  .swap-btn:hover, .verify-btn:hover{color:var(--text);border-color:var(--text-dim);}
+
+  .pane-foot{padding:10px 14px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--text-dim);font-family:'JetBrains Mono',monospace;gap:8px;flex-wrap:wrap;}
+  .copy-btn{background:none;border:1px solid var(--border);color:var(--text-dim);border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;font-family:'JetBrains Mono',monospace;}
+  .copy-btn:hover{color:var(--teal);border-color:var(--teal);}
+  .badge{padding:2px 8px;border-radius:20px;font-size:10.5px;}
+  .badge.warn{background:rgba(232,192,125,0.12);color:var(--amber);}
+  .badge.ok{background:rgba(45,212,191,0.12);color:var(--teal);}
+  .badge.err{background:rgba(240,90,90,0.12);color:var(--red);}
+
+  .notes-box{margin-top:6px;padding:10px 14px;border-top:1px solid var(--border);background:var(--surface-2);font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--amber);white-space:pre-wrap;display:none;max-height:140px;overflow:auto;}
+
+  .error-banner{margin-top:16px;padding:12px 16px;border-radius:10px;background:rgba(220,90,90,0.08);border:1px solid rgba(220,90,90,0.35);color:var(--red);font-family:'JetBrains Mono',monospace;font-size:12.5px;display:none;white-space:pre-wrap;}
+  .note-banner{margin-top:16px;padding:12px 16px;border-radius:10px;background:rgba(45,212,191,0.06);border:1px solid rgba(45,212,191,0.25);color:#a9e6df;font-family:'JetBrains Mono',monospace;font-size:12px;}
+  .note-banner a{color:var(--teal);}
+
+  .section{margin-top:22px;}
+  .section-head{display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;}
+  .section-head h3{margin:0;font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--text-dim);font-weight:600;letter-spacing:.04em;text-transform:uppercase;}
+  .section-body{border:1px solid var(--border);border-top:none;border-radius:0 0 10px 10px;padding:10px 14px;display:none;background:var(--surface);}
+  .history-item{display:flex;justify-content:space-between;align-items:center;padding:8px 6px;border-bottom:1px solid var(--border);font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-dim);cursor:pointer;}
+  .history-item:last-child{border-bottom:none;}
+  .history-item:hover{color:var(--text);}
+  .history-item .meta{color:var(--teal);}
+
+  .diff-line{font-family:'JetBrains Mono',monospace;font-size:12px;white-space:pre-wrap;padding:1px 8px;border-radius:3px;}
+  .diff-add{background:rgba(45,212,191,0.12);color:#a9e6df;}
+  .diff-remove{background:rgba(240,90,90,0.1);color:var(--red);text-decoration:line-through;}
+  .diff-equal{color:var(--text-dim);}
+
+  .run-cols{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  @media (max-width:700px){ .run-cols{grid-template-columns:1fr;} }
+  .run-col{background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;}
+  .run-col h4{margin:0 0 6px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.05em;}
+  .run-out{font-family:'JetBrains Mono',monospace;font-size:12px;white-space:pre-wrap;color:var(--text);max-height:220px;overflow:auto;margin:0;}
+  .run-out.stderr{color:var(--red);}
+  .run-verdict{font-family:'JetBrains Mono',monospace;font-size:12.5px;padding:8px 12px;border-radius:8px;margin-bottom:10px;}
+  .run-verdict.match{background:rgba(45,212,191,0.1);color:var(--teal);border:1px solid rgba(45,212,191,0.3);}
+  .run-verdict.mismatch{background:rgba(240,90,90,0.1);color:var(--red);border:1px solid rgba(240,90,90,0.3);}
+  .run-verdict.warn{background:rgba(232,192,125,0.1);color:var(--amber);border:1px solid rgba(232,192,125,0.3);}
+
+  .test-item{border:1px solid var(--border);border-radius:10px;margin-bottom:8px;overflow:hidden;background:var(--surface-2);}
+  .test-item-head{display:flex;align-items:center;justify-content:space-between;padding:9px 12px;cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:12px;}
+  .test-item-head .label{color:var(--text-dim);}
+  .test-item-body{display:none;padding:0 12px 12px;}
+  .test-badge{font-size:10.5px;padding:2px 9px;border-radius:20px;font-family:'JetBrains Mono',monospace;}
+  .test-badge.pass{background:rgba(45,212,191,0.12);color:var(--teal);}
+  .test-badge.fail{background:rgba(240,90,90,0.12);color:var(--red);}
+  .test-summary{font-family:'JetBrains Mono',monospace;font-size:13px;padding:10px 12px;border-radius:8px;margin-bottom:10px;}
+
+  footer{margin-top:30px;color:var(--text-dim);font-size:12px;font-family:'JetBrains Mono',monospace;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <p class="eyebrow">Polyglot Converter</p>
+    <h1><span class="from" id="titleFrom">python</span><span class="arrow">→</span><span class="to" id="titleTo">javascript</span></h1>
+    <p class="sub">Paste code, pick a target language, and let the model rewrite it — with streaming output, syntax highlighting, auto-detection, warnings, and a round-trip sanity check.</p>
+
+    <div class="key-row">
+      <label for="apiKey">GROQ_API_KEY</label>
+      <input id="apiKey" type="password" placeholder="gsk_..." autocomplete="off" spellcheck="false">
+      <span class="key-status empty" id="keyStatus">not set</span>
+      <a href="https://console.groq.com/keys" target="_blank" rel="noopener">get a free key ↗</a>
+    </div>
+
+    <div class="toolbar">
+      <label class="chip" title="Guess the source language from pasted code">
+        <input type="checkbox" id="autoDetect" checked> auto-detect source
+      </label>
+      <label class="chip" title="Ask the model to explain non-obvious conversions and flag risky lines">
+        <input type="checkbox" id="explainMode" checked> explain mode
+      </label>
+      <label class="chip" title="Stream tokens as they arrive">
+        <input type="checkbox" id="streamMode" checked> stream output
+      </label>
+      <select id="modelSelect" title="Primary model — falls back automatically if it fails">
+        <option value="llama-3.3-70b-versatile">llama-3.3-70b-versatile</option>
+        <option value="llama-3.1-8b-instant">llama-3.1-8b-instant</option>
+      </select>
+      <span id="tokenEstimate">~0 tokens</span>
+    </div>
+
+    <div class="toolbar" style="margin-top:8px;">
+      <select id="indentStyle" title="Indentation style for the generated code">
+        <option value="4 spaces">4 spaces</option>
+        <option value="2 spaces">2 spaces</option>
+        <option value="tabs">tabs</option>
+      </select>
+      <input id="targetVersion" class="chip" style="width:190px;cursor:text;" type="text" placeholder="target version, e.g. Python 3.11, ES2022, Java 17">
+      <label class="chip" title="Avoid third-party libraries, use only the standard library">
+        <input type="checkbox" id="noDeps"> stdlib only
+      </label>
+      <label class="chip" title="Add type hints / type annotations where the target language supports them">
+        <input type="checkbox" id="typeHints"> add type hints
+      </label>
+    </div>
+
+    <div class="filebar">
+      <button class="upload-btn" onclick="document.getElementById('fileInput').click()">+ upload file(s)</button>
+      <input type="file" id="fileInput" multiple style="display:none">
+      <button class="action-btn" id="convertAllBtn" style="display:none">convert all</button>
+      <button class="action-btn" id="downloadZipBtn" style="display:none">download all (.zip)</button>
+      <div id="filePills" style="display:flex;gap:8px;flex-wrap:wrap;"></div>
+    </div>
+  </header>
+
+  <div class="panes">
+    <div class="pane">
+      <div class="pane-head">
+        <select class="lang-select" id="fromLang"></select>
+        <span class="pane-tag" id="detectTag">source</span>
+      </div>
+      <div class="editor-wrap">
+        <div class="gutter" id="sourceGutter"><div>1</div></div>
+        <div class="editor-inner">
+          <pre class="highlight-layer" aria-hidden="true"><code id="sourceHighlight" class="language-python"></code></pre>
+          <textarea id="sourceCode" spellcheck="false" placeholder="# paste your code here
+def greet(name):
+    print(f'Hello, {name}!')
+
+greet('world')"></textarea>
+        </div>
+      </div>
+      <div class="pane-foot">
+        <span id="sourceCount">0 lines</span>
+        <span style="color:var(--text-dim);font-size:10px;">⌘/Ctrl + Enter to convert</span>
+        <button class="copy-btn" onclick="clearSource()">clear</button>
+      </div>
+    </div>
+
+    <div class="center-control">
+      <button class="swap-btn" id="swapBtn" title="Swap languages">⇄ swap</button>
+      <button class="convert-btn" id="convertBtn" title="Convert">▶</button>
+      <button class="verify-btn" id="verifyBtn" title="Convert output back and diff against original">↺ verify</button>
+      <button class="verify-btn" id="runCompareBtn" title="Actually execute both versions and compare real output">⚙ run &amp; compare</button>
+    </div>
+
+    <div class="pane">
+      <div class="pane-head">
+        <select class="lang-select" id="toLang"></select>
+        <span class="pane-tag" id="outputBadgeWrap"><span class="badge" id="outputBadge">idle</span></span>
+      </div>
+      <div class="output-view">
+        <pre id="outputPre"><code id="outputCodeEl" class="language-javascript"></code></pre>
+        <div class="output-raw" id="outputRaw"></div>
+      </div>
+      <div class="notes-box" id="notesBox"></div>
+      <div class="pane-foot">
+        <span id="outputStatus">idle</span>
+        <div>
+          <button class="copy-btn" onclick="toggleRaw()">edit raw</button>
+          <button class="copy-btn" onclick="downloadOutput()">download</button>
+          <button class="copy-btn" onclick="copyOutput()">copy</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="error-banner" id="errorBanner"></div>
+  <div class="note-banner">
+    Runs entirely in your browser: your key is only used to call Groq's API directly and is never stored server-side. Auto-detect and syntax checks are heuristic, not a full compiler — always read generated code before running it. "Run &amp; compare" sends both code snippets to Piston (emkc.org), a free public sandboxed execution service, to actually run them and compare real output — don't run code containing secrets or sensitive data through it.
+  </div>
+
+  <div class="section" id="runSection" style="display:none;">
+    <div class="section-head" onclick="toggleSection('runBody')"><h3>run &amp; compare — actual execution</h3><span id="runToggleIcon">▾</span></div>
+    <div class="section-body" id="runBody">
+      <div style="margin-bottom:10px;">
+        <label style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-dim);display:block;margin-bottom:4px;">stdin (optional — piped into both programs identically for a single run)</label>
+        <textarea id="stdinInput" placeholder="Leave blank if your code doesn't read input" style="width:100%;min-height:56px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12px;padding:8px;resize:vertical;"></textarea>
+      </div>
+      <div style="margin-bottom:12px;">
+        <button class="action-btn" id="genTestsBtn">🧪 auto-generate &amp; run test cases</button>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--text-dim);margin-left:8px;">the model infers likely inputs from your code and runs several cases automatically</span>
+      </div>
+      <div id="runResults"></div>
+      <div id="testResults"></div>
+    </div>
+  </div>
+
+  <div class="section" id="diffSection" style="display:none;">
+    <div class="section-head" onclick="toggleSection('diffBody')"><h3>round-trip diff</h3><span id="diffToggleIcon">▾</span></div>
+    <div class="section-body" id="diffBody"></div>
+  </div>
+
+  <div class="section">
+    <div class="section-head" onclick="toggleSection('historyBody')"><h3>history</h3><span id="histToggleIcon">▾</span></div>
+    <div class="section-body" id="historyBody"><span style="color:var(--text-dim);font-family:'JetBrains Mono',monospace;font-size:12px;">No conversions yet.</span></div>
+  </div>
+
+  <footer>polyglot · powered by Groq</footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/acorn/8.11.3/acorn.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script>
+Prism.plugins.autoloader.languages_path = 'https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/';
+
+const LANGS = [
+  { id:'python', label:'Python', color:'#ffd43b', prism:'python', ext:'.py' },
+  { id:'javascript', label:'JavaScript', color:'#f7df1e', prism:'javascript', ext:'.js' },
+  { id:'typescript', label:'TypeScript', color:'#3178c6', prism:'typescript', ext:'.ts' },
+  { id:'cpp', label:'C++', color:'#00b4ff', prism:'cpp', ext:'.cpp' },
+  { id:'c', label:'C', color:'#a8b9cc', prism:'c', ext:'.c' },
+  { id:'java', label:'Java', color:'#ed8b00', prism:'java', ext:'.java' },
+  { id:'go', label:'Go', color:'#00add8', prism:'go', ext:'.go' },
+  { id:'rust', label:'Rust', color:'#dea584', prism:'rust', ext:'.rs' },
+  { id:'ruby', label:'Ruby', color:'#cc342d', prism:'ruby', ext:'.rb' },
+  { id:'php', label:'PHP', color:'#8892be', prism:'php', ext:'.php' },
+  { id:'csharp', label:'C#', color:'#9b4f96', prism:'csharp', ext:'.cs' },
+  { id:'swift', label:'Swift', color:'#f05138', prism:'swift', ext:'.swift' },
+  { id:'kotlin', label:'Kotlin', color:'#a97bff', prism:'kotlin', ext:'.kt' },
+];
+const MODELS_FALLBACK = ['llama-3.3-70b-versatile','llama-3.1-8b-instant'];
+
+const fromSel = document.getElementById('fromLang');
+const toSel = document.getElementById('toLang');
+const titleFrom = document.getElementById('titleFrom');
+const titleTo = document.getElementById('titleTo');
+const detectTag = document.getElementById('detectTag');
+
+function buildOptions(sel, defaultId){
+  sel.innerHTML = '';
+  LANGS.forEach(l=>{
+    const opt = document.createElement('option');
+    opt.value = l.id; opt.textContent = l.label;
+    if(l.id===defaultId) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+buildOptions(fromSel,'python');
+buildOptions(toSel,'javascript');
+function colorFor(id){ return (LANGS.find(l=>l.id===id)||{}).color || '#2dd4bf'; }
+function labelFor(id){ return (LANGS.find(l=>l.id===id)||{}).label || id; }
+function prismFor(id){ return (LANGS.find(l=>l.id===id)||{}).prism || 'markup'; }
+function extFor(id){ return (LANGS.find(l=>l.id===id)||{}).ext || '.txt'; }
+
+function refreshChrome(){
+  fromSel.style.setProperty('--lang-color', colorFor(fromSel.value));
+  toSel.style.setProperty('--lang-color', colorFor(toSel.value));
+  titleFrom.textContent = labelFor(fromSel.value).toLowerCase();
+  titleTo.textContent = labelFor(toSel.value).toLowerCase();
+}
+const sourceHighlightEl = document.getElementById('sourceHighlight');
+const sourceGutter = document.getElementById('sourceGutter');
+
+function highlightSource(){
+  const code = document.getElementById('sourceCode').value;
+  sourceHighlightEl.className = 'language-' + prismFor(fromSel.value);
+  sourceHighlightEl.textContent = code;
+  try{ Prism.highlightElement(sourceHighlightEl); }catch(e){}
+}
+function updateGutter(){
+  const n = Math.max(1, document.getElementById('sourceCode').value.split('\n').length);
+  const current = sourceGutter.children.length;
+  if(current < n){
+    for(let i=current+1;i<=n;i++){ const d=document.createElement('div'); d.textContent=i; sourceGutter.appendChild(d); }
+  } else if(current > n){
+    for(let i=current;i>n;i--){ sourceGutter.removeChild(sourceGutter.lastChild); }
+  }
+}
+
+fromSel.addEventListener('change', ()=>{ detectTag.textContent='source (manual)'; refreshChrome(); highlightSource(); });
+toSel.addEventListener('change', refreshChrome);
+refreshChrome();
+
+// ---------- auto-detect ----------
+function detectLanguage(code){
+  const c = code;
+  const tests = [
+    { id:'python', score: /def\s+\w+\(.*\):/.test(c) || (/^\s*import\s+\w+/m.test(c) && !/;\s*$/m.test(c)) ? 3:0 },
+    { id:'php', score: /<\?php/.test(c) ? 5:0 },
+    { id:'rust', score: /\bfn\s+\w+\(/.test(c) && /let\s+mut\b|->\s*\w+/.test(c) ? 4:0 },
+    { id:'go', score: /\bfunc\s+\w+\(/.test(c) && /package\s+\w+/.test(c) ? 4:0 },
+    { id:'kotlin', score: /\bfun\s+\w+\(/.test(c) && /\bval\b|\bvar\b/.test(c) ? 3:0 },
+    { id:'swift', score: /\bfunc\s+\w+\(/.test(c) && /\blet\b|\bvar\b/.test(c) && !/package/.test(c) ? 2:0 },
+    { id:'ruby', score: /\bdef\s+\w+/.test(c) && /\bend\b/.test(c) ? 3:0 },
+    { id:'csharp', score: /\busing System/.test(c) || /namespace\s+\w+/.test(c) ? 4:0 },
+    { id:'java', score: /public\s+(static\s+)?class\s+\w+/.test(c) || /public\s+static\s+void\s+main/.test(c) ? 4:0 },
+    { id:'cpp', score: /#include\s*</.test(c) && (/std::/.test(c) || /cout|cin/.test(c)) ? 4:0 },
+    { id:'c', score: /#include\s*</.test(c) ? 2:0 },
+    { id:'typescript', score: /:\s*(string|number|boolean|any|void)\b/.test(c) || /interface\s+\w+/.test(c) ? 3:0 },
+    { id:'javascript', score: /\bfunction\s+\w*\(/.test(c) || /=>/.test(c) || /\bconst\b|\blet\b/.test(c) ? 1:0 },
+  ];
+  tests.sort((a,b)=>b.score-a.score);
+  return tests[0].score>0 ? tests[0].id : null;
+}
+
+let detectTimer;
+const sourceTa = document.getElementById('sourceCode');
+function maybeAutoDetect(){
+  if(!document.getElementById('autoDetect').checked) return;
+  clearTimeout(detectTimer);
+  detectTimer = setTimeout(()=>{
+    const guess = detectLanguage(sourceTa.value);
+    if(guess){
+      fromSel.value = guess;
+      detectTag.textContent = 'source · detected ' + labelFor(guess).toLowerCase();
+      refreshChrome();
+    } else {
+      detectTag.textContent = 'source · undetected';
+    }
+  }, 400);
+}
+
+document.getElementById('swapBtn').addEventListener('click', ()=>{
+  const a=fromSel.value, b=toSel.value;
+  fromSel.value=b; toSel.value=a;
+  const outTxt = getOutputText();
+  if(outTxt.trim()){
+    const tmp = sourceTa.value;
+    sourceTa.value = outTxt;
+    setOutputText('', 'javascript');
+  }
+  refreshChrome(); updateLineCount(); updateTokenEstimate(); highlightSource(); updateGutter();
+});
+
+const sourceCount = document.getElementById('sourceCount');
+function updateLineCount(){
+  const n = sourceTa.value.split('\n').filter(l=>l.trim().length).length;
+  sourceCount.textContent = n + (n===1?' line':' lines');
+}
+function clearSource(){ sourceTa.value=''; updateLineCount(); updateTokenEstimate(); highlightSource(); updateGutter(); }
+sourceTa.addEventListener('input', ()=>{ updateLineCount(); updateTokenEstimate(); maybeAutoDetect(); highlightSource(); updateGutter(); });
+sourceTa.addEventListener('scroll', ()=>{
+  document.querySelector('.editor-inner .highlight-layer').scrollTop = sourceTa.scrollTop;
+  document.querySelector('.editor-inner .highlight-layer').scrollLeft = sourceTa.scrollLeft;
+  sourceGutter.scrollTop = sourceTa.scrollTop;
+});
+sourceTa.addEventListener('keydown', (e)=>{
+  if((e.metaKey || e.ctrlKey) && e.key === 'Enter'){ e.preventDefault(); convert(); }
+});
+
+function updateTokenEstimate(){
+  const chars = sourceTa.value.length;
+  const est = Math.round(chars/4);
+  document.getElementById('tokenEstimate').textContent = '~' + est + ' tokens in';
+}
+
+// ---------- api key ----------
+const apiKeyInput = document.getElementById('apiKey');
+const keyStatus = document.getElementById('keyStatus');
+apiKeyInput.addEventListener('input', ()=>{
+  if(apiKeyInput.value.trim()){ keyStatus.textContent='ready'; keyStatus.className='key-status ok'; }
+  else { keyStatus.textContent='not set'; keyStatus.className='key-status empty'; }
+});
+
+// ---------- output rendering ----------
+const outputPre = document.getElementById('outputPre');
+const outputCodeEl = document.getElementById('outputCodeEl');
+const outputRaw = document.getElementById('outputRaw');
+let rawEditing = false;
+let lastNotes = '';
+
+function setOutputText(text, langId){
+  outputCodeEl.textContent = text;
+  outputCodeEl.className = 'language-' + prismFor(langId||toSel.value);
+  outputRaw.textContent = text;
+  if(!rawEditing && text){ try{ Prism.highlightElement(outputCodeEl); }catch(e){} }
+}
+function getOutputText(){ return rawEditing ? outputRaw.textContent : outputCodeEl.textContent; }
+function toggleRaw(){
+  rawEditing = !rawEditing;
+  outputRaw.contentEditable = rawEditing;
+  outputRaw.style.display = rawEditing ? 'block' : 'none';
+  outputPre.style.display = rawEditing ? 'none' : 'block';
+}
+
+function copyOutput(){
+  const txt = getOutputText();
+  if(!txt) return;
+  navigator.clipboard.writeText(txt);
+}
+function downloadOutput(){
+  const txt = getOutputText();
+  if(!txt) return;
+  const blob = new Blob([txt], {type:'text/plain'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'converted' + extFor(toSel.value);
+  a.click();
+}
+
+// ---------- validation ----------
+function validateOutput(code, langId){
+  if(!code.trim()) return { ok:true, warnings:[] };
+  const warnings = [];
+  const opens = (code.match(/[\{\[\(]/g)||[]).length;
+  const closes = (code.match(/[\}\]\)]/g)||[]).length;
+  if(opens !== closes) warnings.push('Unbalanced brackets/parens (' + opens + ' open vs ' + closes + ' close) — likely truncated or malformed.');
+
+  if((langId==='javascript' || langId==='typescript') && window.acorn){
+    try{
+      acorn.parse(code, { ecmaVersion:'latest', sourceType:'module' });
+    } catch(e){
+      warnings.push('JS/TS syntax check failed: ' + e.message);
+    }
+  }
+  return { ok: warnings.length===0, warnings };
+}
+
+// ---------- notes parsing ----------
+function parseModelOutput(raw){
+  const codeMatch = raw.match(/\/\/\/CODE_START\/\/\/([\s\S]*?)\/\/\/CODE_END\/\/\//);
+  const notesMatch = raw.match(/\/\/\/NOTES_START\/\/\/([\s\S]*?)\/\/\/NOTES_END\/\/\//);
+  let code = codeMatch ? codeMatch[1] : raw;
+  code = code.replace(/^```[a-zA-Z]*\n?/,'').replace(/```\s*$/,'').trim();
+  const notes = notesMatch ? notesMatch[1].trim() : '';
+  return { code, notes };
+}
+
+function buildSystemPrompt(fromLabel, toLabel, explain, style){
+  style = style || {};
+  let p = `You are a precise code translator. Convert the given ${fromLabel} code into idiomatic, correct ${toLabel} code.
+Rules:
+- Preserve behavior exactly.
+- Use idiomatic ${toLabel} conventions, naming, and standard library where appropriate.
+- Wrap the converted code EXACTLY between the markers ///CODE_START/// and ///CODE_END/// with no markdown code fences inside.
+- Do not include any commentary outside those markers.`;
+  if(style.indent){
+    p += `
+- Indent the code using ${style.indent}.`;
+  }
+  if(style.version){
+    p += `
+- Target ${style.version} specifically — use only syntax and standard-library features available in that version, and avoid anything deprecated or removed by it.`;
+  }
+  if(style.noDeps){
+    p += `
+- Use only the ${toLabel} standard library. Do not introduce any third-party packages or dependencies, even if a library would normally be idiomatic — implement the equivalent behavior with stdlib only.`;
+  }
+  if(style.typeHints){
+    p += `
+- Add type hints / type annotations wherever ${toLabel} supports them (function signatures, variables where it aids clarity).`;
+  }
+  if(explain){
+    p += `
+- After the code block, add a section wrapped EXACTLY between ///NOTES_START/// and ///NOTES_END/// containing a short bullet list of: (a) anything with no direct equivalent and how you handled it, (b) any behavior differences to be aware of. If there is nothing notable, write "None." inside the markers.`;
+  } else {
+    p += `
+- Do not add a notes section.`;
+  }
+  return p;
+}
+
+function getStyleOptions(){
+  return {
+    indent: document.getElementById('indentStyle').value,
+    version: document.getElementById('targetVersion').value.trim(),
+    noDeps: document.getElementById('noDeps').checked,
+    typeHints: document.getElementById('typeHints').checked
+  };
+}
+
+// ---------- error/status ----------
+const errorBanner = document.getElementById('errorBanner');
+function showError(msg){ errorBanner.textContent = msg; errorBanner.style.display='block'; }
+function clearError(){ errorBanner.style.display='none'; errorBanner.textContent=''; }
+const outputBadge = document.getElementById('outputBadge');
+const outputStatus = document.getElementById('outputStatus');
+const notesBox = document.getElementById('notesBox');
+function setBadge(text, cls){ outputBadge.textContent = text; outputBadge.className = 'badge ' + (cls||''); }
+
+// ---------- core conversion (streaming + fallback) ----------
+async function callGroq(systemPrompt, userCode, opts){
+  opts = opts || {};
+  const stream = opts.stream;
+  const onDelta = opts.onDelta;
+  const key = apiKeyInput.value.trim();
+  const primary = document.getElementById('modelSelect').value;
+  const models = [primary].concat(MODELS_FALLBACK.filter(function(m){ return m!==primary; }));
+  let lastErr;
+  for(const model of models){
+    try{
+      const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method:'POST',
+        headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer '+key },
+        body: JSON.stringify({
+          model, temperature:0.2, stream: !!stream,
+          messages:[ {role:'system', content:systemPrompt}, {role:'user', content:userCode} ]
+        })
+      });
+      if(!resp.ok){
+        const errText = await resp.text();
+        throw new Error(model + ' -> HTTP ' + resp.status + ': ' + errText.slice(0,200));
+      }
+      if(!stream){
+        const data = await resp.json();
+        return { text: (data.choices && data.choices[0] && data.choices[0].message.content) || '', model };
+      } else {
+        const reader = resp.body.getReader();
+        const decoder = new TextDecoder();
+        let full = '';
+        let buf = '';
+        while(true){
+          const chunk = await reader.read();
+          if(chunk.done) break;
+          buf += decoder.decode(chunk.value, {stream:true});
+          const lines = buf.split('\n');
+          buf = lines.pop();
+          for(const line of lines){
+            const trimmed = line.trim();
+            if(!trimmed.startsWith('data:')) continue;
+            const payload = trimmed.slice(5).trim();
+            if(payload === '[DONE]') continue;
+            try{
+              const json = JSON.parse(payload);
+              const delta = (json.choices && json.choices[0] && json.choices[0].delta && json.choices[0].delta.content) || '';
+              if(delta){ full += delta; if(onDelta) onDelta(full); }
+            }catch(e){ /* ignore partial */ }
+          }
+        }
+        return { text: full, model };
+      }
+    }catch(e){ lastErr = e; continue; }
+  }
+  throw lastErr || new Error('All models failed.');
+}
+
+const convertBtn = document.getElementById('convertBtn');
+async function convert(){
+  clearError();
+  notesBox.style.display = 'none';
+  const key = apiKeyInput.value.trim();
+  const code = sourceTa.value;
+  const fromLabel = labelFor(fromSel.value);
+  const toLabel = labelFor(toSel.value);
+  if(!key){ showError('Add your Groq API key above first (free at console.groq.com/keys).'); return; }
+  if(!code.trim()){ showError('Paste some source code to convert.'); return; }
+
+  convertBtn.classList.add('loading');
+  setBadge('converting…','warn');
+  outputStatus.textContent = 'converting…';
+  setOutputText('', toSel.value);
+  rawEditing = false; outputPre.style.display='block'; outputRaw.style.display='none';
+
+  const explain = document.getElementById('explainMode').checked;
+  const doStream = document.getElementById('streamMode').checked;
+  const systemPrompt = buildSystemPrompt(fromLabel, toLabel, explain, getStyleOptions());
+
+  try{
+    const result = await callGroq(systemPrompt, code, {
+      stream: doStream,
+      onDelta: function(partial){
+        const cleanish = partial.replace('///CODE_START///','').split('///CODE_END///')[0];
+        outputCodeEl.textContent = cleanish;
+        outputRaw.textContent = cleanish;
+      }
+    });
+    const usedModel = result.model;
+    const parsed = parseModelOutput(result.text);
+    const finalCode = parsed.code, notes = parsed.notes;
+    setOutputText(finalCode, toSel.value);
+    lastNotes = notes;
+    if(notes && notes.toLowerCase() !== 'none.'){
+      notesBox.textContent = notes;
+      notesBox.style.display = 'block';
+    }
+
+    const validation = validateOutput(finalCode, toSel.value);
+    if(validation.ok){ setBadge('looks valid','ok'); }
+    else { setBadge('check output','err'); showError('Heuristic checks flagged:\n' + validation.warnings.join('\n')); }
+
+    outputStatus.textContent = 'done · ' + fromLabel + ' -> ' + toLabel + ' · ' + usedModel;
+    pushHistory(fromSel.value, toSel.value, code, finalCode, usedModel);
+    document.getElementById('diffSection').style.display = 'none';
+  }catch(err){
+    outputStatus.textContent = 'failed';
+    setBadge('failed','err');
+    showError('Conversion failed: ' + err.message);
+  }finally{
+    convertBtn.classList.remove('loading');
+  }
+}
+convertBtn.addEventListener('click', convert);
+
+// ---------- round-trip verify ----------
+function diffLines(a, b){
+  const A = a.split('\n'), B = b.split('\n');
+  const m = A.length, n = B.length;
+  const dp = [];
+  for(let i=0;i<=m;i++) dp.push(new Array(n+1).fill(0));
+  for(let i=m-1;i>=0;i--) for(let j=n-1;j>=0;j--)
+    dp[i][j] = A[i]===B[j] ? dp[i+1][j+1]+1 : Math.max(dp[i+1][j], dp[i][j+1]);
+  const out = [];
+  let i=0,j=0;
+  while(i<m && j<n){
+    if(A[i]===B[j]){ out.push({t:'equal',l:A[i]}); i++; j++; }
+    else if(dp[i+1][j] >= dp[i][j+1]){ out.push({t:'remove',l:A[i]}); i++; }
+    else { out.push({t:'add',l:B[j]}); j++; }
+  }
+  while(i<m){ out.push({t:'remove',l:A[i]}); i++; }
+  while(j<n){ out.push({t:'add',l:B[j]}); j++; }
+  return out;
+}
+
+document.getElementById('verifyBtn').addEventListener('click', async ()=>{
+  clearError();
+  const key = apiKeyInput.value.trim();
+  const original = sourceTa.value;
+  const converted = getOutputText();
+  if(!key){ showError('Add your Groq API key first.'); return; }
+  if(!converted.trim()){ showError('Convert something first, then verify.'); return; }
+
+  const diffSection = document.getElementById('diffSection');
+  const diffBody = document.getElementById('diffBody');
+  diffSection.style.display = 'block';
+  diffBody.style.display = 'block';
+  document.getElementById('diffToggleIcon').textContent = '▴';
+  diffBody.innerHTML = '<span style="color:var(--text-dim);font-family:JetBrains Mono,monospace;font-size:12px;">Converting back to compare…</span>';
+
+  try{
+    const systemPrompt = buildSystemPrompt(labelFor(toSel.value), labelFor(fromSel.value), false);
+    const result = await callGroq(systemPrompt, converted, { stream:false });
+    const backCode = parseModelOutput(result.text).code;
+    const diff = diffLines(original.trim(), backCode.trim());
+    const changed = diff.filter(function(d){ return d.t!=='equal'; }).length;
+    diffBody.innerHTML = '';
+    const summary = document.createElement('div');
+    summary.style.cssText = 'font-family:JetBrains Mono,monospace;font-size:11.5px;color:var(--text-dim);margin-bottom:8px;';
+    summary.textContent = changed===0 ? 'Round-trip matches the original exactly.' : (changed + ' line(s) differ after round-tripping — review before trusting the conversion.');
+    diffBody.appendChild(summary);
+    diff.forEach(function(d){
+      const div = document.createElement('div');
+      div.className = 'diff-line diff-' + d.t;
+      div.textContent = (d.t==='add'?'+ ':d.t==='remove'?'- ':'  ') + d.l;
+      diffBody.appendChild(div);
+    });
+  }catch(err){
+    diffBody.innerHTML = '';
+    showError('Round-trip verification failed: ' + err.message);
+  }
+});
+
+// ---------- run & compare (actual execution via Piston) ----------
+const PISTON_LANG = {
+  python:'python', javascript:'javascript', typescript:'typescript',
+  cpp:'c++', c:'c', java:'java', go:'go', rust:'rust', ruby:'ruby',
+  php:'php', csharp:'csharp', swift:'swift', kotlin:'kotlin'
+};
+
+async function pistonRun(langId, code, stdin){
+  const language = PISTON_LANG[langId];
+  if(!language) throw new Error('No execution runtime mapped for ' + labelFor(langId) + '.');
+  const resp = await fetch('https://emkc.org/api/v2/piston/execute', {
+    method:'POST',
+    headers:{ 'Content-Type':'application/json' },
+    body: JSON.stringify({
+      language, version:'*',
+      files:[{ name:'main', content: code }],
+      stdin: stdin || ''
+    })
+  });
+  if(!resp.ok){
+    const t = await resp.text();
+    throw new Error('Execution service returned HTTP ' + resp.status + ': ' + t.slice(0,200));
+  }
+  const data = await resp.json();
+  if(data.compile && data.compile.code !== 0){
+    return { stdout:'', stderr: (data.compile.stderr || data.compile.output || 'Compile failed.'), compileError:true };
+  }
+  const run = data.run || {};
+  return { stdout: run.stdout || '', stderr: run.stderr || '', code: run.code };
+}
+
+document.getElementById('runCompareBtn').addEventListener('click', async ()=>{
+  clearError();
+  const runSection = document.getElementById('runSection');
+  const runBody = document.getElementById('runBody');
+  const runResults = document.getElementById('runResults');
+  runSection.style.display = 'block';
+  runBody.style.display = 'block';
+  document.getElementById('runToggleIcon').textContent = '▴';
+
+  const source = sourceTa.value;
+  const converted = getOutputText();
+  const stdin = document.getElementById('stdinInput').value;
+
+  if(!source.trim()){ showError('Add some source code first.'); return; }
+  if(!converted.trim()){ showError('Convert something first, then run & compare.'); return; }
+
+  runResults.innerHTML = '<div class="run-verdict warn">Executing both versions…</div>';
+
+  try{
+    const [srcResult, outResult] = await Promise.all([
+      pistonRun(fromSel.value, source, stdin).catch(e => ({ error: e.message })),
+      pistonRun(toSel.value, converted, stdin).catch(e => ({ error: e.message }))
+    ]);
+
+    runResults.innerHTML = '';
+
+    if(srcResult.error || outResult.error){
+      const verdict = document.createElement('div');
+      verdict.className = 'run-verdict warn';
+      verdict.textContent = 'Could not execute one or both versions: ' +
+        (srcResult.error || '') + ' ' + (outResult.error || '');
+      runResults.appendChild(verdict);
+    } else {
+      const srcOut = (srcResult.stdout || '').trim();
+      const outOut = (outResult.stdout || '').trim();
+      const bothRan = !srcResult.compileError && !outResult.compileError;
+      const match = bothRan && srcOut === outOut;
+
+      const verdict = document.createElement('div');
+      if(!bothRan){
+        verdict.className = 'run-verdict warn';
+        verdict.textContent = 'One version failed to compile — see details below.';
+      } else if(match){
+        verdict.className = 'run-verdict match';
+        verdict.textContent = '✓ Outputs match exactly — the conversion behaves the same on this input.';
+      } else {
+        verdict.className = 'run-verdict mismatch';
+        verdict.textContent = '✕ Outputs differ — review the conversion before trusting it.';
+      }
+      runResults.appendChild(verdict);
+    }
+
+    const cols = document.createElement('div');
+    cols.className = 'run-cols';
+
+    function col(title, result){
+      const wrap = document.createElement('div');
+      wrap.className = 'run-col';
+      const h = document.createElement('h4');
+      h.textContent = title;
+      wrap.appendChild(h);
+      if(result.error){
+        const p = document.createElement('pre');
+        p.className = 'run-out stderr';
+        p.textContent = result.error;
+        wrap.appendChild(p);
+        return wrap;
+      }
+      const out = document.createElement('pre');
+      out.className = 'run-out';
+      out.textContent = result.stdout || '(no stdout)';
+      wrap.appendChild(out);
+      if(result.stderr){
+        const err = document.createElement('pre');
+        err.className = 'run-out stderr';
+        err.textContent = result.stderr;
+        wrap.appendChild(err);
+      }
+      return wrap;
+    }
+    cols.appendChild(col(labelFor(fromSel.value) + ' (source)', srcResult));
+    cols.appendChild(col(labelFor(toSel.value) + ' (converted)', outResult));
+    runResults.appendChild(cols);
+
+  }catch(err){
+    runResults.innerHTML = '';
+    showError('Run & compare failed: ' + err.message);
+  }
+});
+
+// ---------- auto-generated test cases ----------
+function buildTestGenPrompt(langLabel){
+  return `You write test inputs for programs. You will be given ${langLabel} source code.
+Infer what it reads from standard input, if anything (it may read nothing).
+Produce 3 to 5 diverse, VALID test cases as a JSON array only — no markdown fences, no commentary, no trailing text.
+Each element: {"label": "short description", "stdin": "exact text to pipe to stdin, use \\n for newlines, empty string if no input is read"}.
+Prefer including at least one typical case and one edge case (e.g. zero, empty, negative, boundary) when the program's logic makes that meaningful. If the program reads no input, return exactly one element with an empty stdin.
+Output ONLY the JSON array.`;
+}
+
+function parseTestCases(raw){
+  let text = raw.trim().replace(/^```[a-zA-Z]*\n?/,'').replace(/```\s*$/,'').trim();
+  const start = text.indexOf('[');
+  const end = text.lastIndexOf(']');
+  if(start === -1 || end === -1) throw new Error('Model did not return a JSON array.');
+  const arr = JSON.parse(text.slice(start, end+1));
+  if(!Array.isArray(arr) || arr.length===0) throw new Error('No test cases returned.');
+  return arr.map(t => ({ label: String(t.label||'case'), stdin: typeof t.stdin==='string' ? t.stdin : '' })).slice(0,5);
+}
+
+document.getElementById('genTestsBtn').addEventListener('click', async ()=>{
+  clearError();
+  const key = apiKeyInput.value.trim();
+  const source = sourceTa.value;
+  const converted = getOutputText();
+  const testResults = document.getElementById('testResults');
+  const runResults = document.getElementById('runResults');
+
+  document.getElementById('runSection').style.display = 'block';
+  document.getElementById('runBody').style.display = 'block';
+  document.getElementById('runToggleIcon').textContent = '▴';
+
+  if(!key){ showError('Add your Groq API key first.'); return; }
+  if(!source.trim()){ showError('Add some source code first.'); return; }
+  if(!converted.trim()){ showError('Convert something first, then generate tests.'); return; }
+
+  runResults.innerHTML = '';
+  testResults.innerHTML = '<div class="run-verdict warn">Analyzing code and generating test cases…</div>';
+
+  let cases;
+  try{
+    const systemPrompt = buildTestGenPrompt(labelFor(fromSel.value));
+    const result = await callGroq(systemPrompt, source, { stream:false });
+    cases = parseTestCases(result.text);
+  }catch(e){
+    testResults.innerHTML = '';
+    showError('Could not generate test cases: ' + e.message);
+    return;
+  }
+
+  testResults.innerHTML = '<div class="run-verdict warn">Running ' + cases.length + ' test case(s) against both versions…</div>';
+
+  const results = [];
+  for(const tc of cases){
+    let srcR, outR;
+    try{
+      [srcR, outR] = await Promise.all([
+        pistonRun(fromSel.value, source, tc.stdin).catch(e=>({error:e.message})),
+        pistonRun(toSel.value, converted, tc.stdin).catch(e=>({error:e.message}))
+      ]);
+    }catch(e){
+      srcR = { error: e.message }; outR = { error: e.message };
+    }
+    const srcOut = srcR.error ? null : (srcR.stdout||'').trim();
+    const outOut = outR.error ? null : (outR.stdout||'').trim();
+    const pass = srcOut !== null && outOut !== null && srcOut === outOut && !srcR.compileError && !outR.compileError;
+    results.push({ tc, srcR, outR, srcOut, outOut, pass });
+  }
+
+  const passed = results.filter(r=>r.pass).length;
+  testResults.innerHTML = '';
+  const summary = document.createElement('div');
+  summary.className = 'test-summary';
+  summary.style.background = passed===results.length ? 'rgba(45,212,191,0.1)' : 'rgba(240,90,90,0.1)';
+  summary.style.color = passed===results.length ? 'var(--teal)' : 'var(--red)';
+  summary.textContent = passed + ' / ' + results.length + ' test cases passed';
+  testResults.appendChild(summary);
+
+  results.forEach((r, idx)=>{
+    const item = document.createElement('div');
+    item.className = 'test-item';
+    const head = document.createElement('div');
+    head.className = 'test-item-head';
+    head.innerHTML = '<span class="label">#' + (idx+1) + ' — ' + (r.tc.label||'case') + '</span>' +
+      '<span class="test-badge ' + (r.pass?'pass':'fail') + '">' + (r.pass?'pass':'fail') + '</span>';
+    const body = document.createElement('div');
+    body.className = 'test-item-body';
+    const stdinLine = document.createElement('div');
+    stdinLine.style.cssText = 'font-family:JetBrains Mono,monospace;font-size:11px;color:var(--text-dim);margin:6px 0;';
+    stdinLine.textContent = 'stdin: ' + (r.tc.stdin ? JSON.stringify(r.tc.stdin) : '(none)');
+    body.appendChild(stdinLine);
+    const cols = document.createElement('div');
+    cols.className = 'run-cols';
+    function miniCol(title, res, out){
+      const w = document.createElement('div'); w.className = 'run-col';
+      const h = document.createElement('h4'); h.textContent = title; w.appendChild(h);
+      const p = document.createElement('pre'); p.className = 'run-out';
+      p.textContent = res.error ? ('error: ' + res.error) : (out || '(no stdout)');
+      w.appendChild(p);
+      if(res.stderr){ const e = document.createElement('pre'); e.className='run-out stderr'; e.textContent = res.stderr; w.appendChild(e); }
+      return w;
+    }
+    cols.appendChild(miniCol(labelFor(fromSel.value), r.srcR, r.srcOut));
+    cols.appendChild(miniCol(labelFor(toSel.value), r.outR, r.outOut));
+    body.appendChild(cols);
+    head.addEventListener('click', ()=>{ body.style.display = body.style.display==='block' ? 'none' : 'block'; });
+    item.appendChild(head); item.appendChild(body);
+    testResults.appendChild(item);
+    if(!r.pass) body.style.display = 'block';
+  });
+});
+
+function toggleSection(id){
+  const el = document.getElementById(id);
+  const isOpen = el.style.display === 'block';
+  el.style.display = isOpen ? 'none' : 'block';
+  const iconMap = { diffBody:'diffToggleIcon', historyBody:'histToggleIcon', runBody:'runToggleIcon' };
+  const icon = document.getElementById(iconMap[id]);
+  if(icon) icon.textContent = isOpen ? '▾' : '▴';
+}
+
+// ---------- history ----------
+let history = [];
+function pushHistory(fromId, toId, source, output, model){
+  history.unshift({ fromId, toId, source, output, model, ts: new Date() });
+  history = history.slice(0, 20);
+  renderHistory();
+}
+function renderHistory(){
+  const box = document.getElementById('historyBody');
+  if(history.length===0){ box.innerHTML = '<span style="color:var(--text-dim);font-family:JetBrains Mono,monospace;font-size:12px;">No conversions yet.</span>'; return; }
+  box.innerHTML = '';
+  history.forEach(function(h){
+    const row = document.createElement('div');
+    row.className = 'history-item';
+    const time = h.ts.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+    row.innerHTML = '<span>' + time + ' · <span class="meta">' + labelFor(h.fromId) + ' -> ' + labelFor(h.toId) + '</span> · ' + h.model + '</span><span>restore ↺</span>';
+    row.addEventListener('click', function(){
+      fromSel.value = h.fromId; toSel.value = h.toId;
+      sourceTa.value = h.source;
+      setOutputText(h.output, h.toId);
+      refreshChrome(); updateLineCount(); updateTokenEstimate(); highlightSource(); updateGutter();
+      setBadge('restored','ok'); outputStatus.textContent = 'restored from history';
+    });
+    box.appendChild(row);
+  });
+}
+
+// ---------- multi-file batch ----------
+let files = [];
+let activeFileId = null;
+
+document.getElementById('fileInput').addEventListener('change', function(e){
+  const list = Array.from(e.target.files);
+  let idx = files.length;
+  const readers = list.map(function(f){
+    return new Promise(function(res){
+      const r = new FileReader();
+      r.onload = function(){ res({ id: 'f'+(idx++)+'_'+Date.now(), name: f.name, source: r.result, output:'', status:'pending' }); };
+      r.readAsText(f);
+    });
+  });
+  Promise.all(readers).then(function(newFiles){
+    files = files.concat(newFiles);
+    if(!activeFileId && files.length) selectFile(files[0].id);
+    renderFilePills();
+  });
+  e.target.value = '';
+});
+
+function renderFilePills(){
+  const wrap = document.getElementById('filePills');
+  wrap.innerHTML = '';
+  files.forEach(function(f){
+    const pill = document.createElement('span');
+    pill.className = 'file-pill' + (f.id===activeFileId?' active':'');
+    pill.innerHTML = f.name + ' ' + (f.status==='done'?'✓':f.status==='error'?'✕':'') + ' <span class="x" data-id="'+f.id+'">×</span>';
+    pill.addEventListener('click', function(ev){
+      if(ev.target.classList.contains('x')){
+        files = files.filter(function(x){ return x.id!==f.id; });
+        if(activeFileId===f.id) activeFileId = files.length ? files[0].id : null;
+        renderFilePills();
+        return;
+      }
+      selectFile(f.id);
+    });
+    wrap.appendChild(pill);
+  });
+  document.getElementById('convertAllBtn').style.display = files.length>1 ? 'inline-block' : 'none';
+  document.getElementById('downloadZipBtn').style.display = files.some(function(f){ return f.output; }) ? 'inline-block' : 'none';
+}
+
+function selectFile(id){
+  activeFileId = id;
+  const f = files.find(function(x){ return x.id===id; });
+  if(!f) return;
+  sourceTa.value = f.source;
+  setOutputText(f.output||'', toSel.value);
+  updateLineCount(); updateTokenEstimate(); maybeAutoDetect(); highlightSource(); updateGutter();
+  renderFilePills();
+}
+
+document.getElementById('convertAllBtn').addEventListener('click', async function(){
+  const key = apiKeyInput.value.trim();
+  if(!key){ showError('Add your Groq API key first.'); return; }
+  const explain = document.getElementById('explainMode').checked;
+  for(const f of files){
+    f.status = 'converting'; renderFilePills();
+    try{
+      const guess = detectLanguage(f.source) || fromSel.value;
+      const systemPrompt = buildSystemPrompt(labelFor(guess), labelFor(toSel.value), explain, getStyleOptions());
+      const result = await callGroq(systemPrompt, f.source, { stream:false });
+      f.output = parseModelOutput(result.text).code; f.status = 'done';
+    }catch(e){ f.status = 'error'; }
+    renderFilePills();
+  }
+});
+
+document.getElementById('downloadZipBtn').addEventListener('click', async function(){
+  const zip = new JSZip();
+  files.filter(function(f){ return f.output; }).forEach(function(f){
+    const base = f.name.replace(/\.[^.]+$/,'');
+    zip.file(base + extFor(toSel.value), f.output);
+  });
+  const blob = await zip.generateAsync({type:'blob'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'converted-files.zip';
+  a.click();
+});
+
+updateLineCount();
+updateTokenEstimate();
+highlightSource();
+updateGutter();
+</script>
+</body>
+</html>
